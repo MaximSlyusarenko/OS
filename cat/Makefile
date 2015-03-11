@@ -3,6 +3,8 @@ all: cat
 clean:
 	rm -f cat.o
 	rm -f cat
+	rm -f cat2.c
+	$(MAKE) -C ../lib clean
 
 cat: cat.o ../lib/libhelpers.so
 	gcc -o $@ -L../lib -lhelpers cat.o ../lib/libhelpers.so

@@ -1,4 +1,6 @@
 #include <helpers.h>
+#include <string.h>
+#include <stdio.h>
 
 ssize_t read_(int fd, void* buf, ssize_t count)
 {
@@ -8,6 +10,7 @@ ssize_t read_(int fd, void* buf, ssize_t count)
 	return read(fd, buf, 0);
     }
     ssize_t nread = 0;
+    int found = 0;
     do
     {
 	nread = read(fd, buf + add, count);
@@ -18,14 +21,15 @@ ssize_t read_(int fd, void* buf, ssize_t count)
 	int i;
 	for (i = 0; i < nread; i++)
 	{
-	    if (((char*) buf)[add + i] == -1)
+	    if (((char*) buf)[add + i] == (char) -1)
 	    {
+		found = 1;
 		break;
 	    }
 	}
 	add += nread;
 	count -= nread;
-    } while (count > 0 && nread > 0);
+    } while (!found && count > 0 && nread > 0);
     return add;
 }
 

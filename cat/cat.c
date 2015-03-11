@@ -12,7 +12,7 @@ int main()
 
     do
     {
-	nread = read_(STDIN_FILENO, buf, 4096);
+	nread = read_(STDIN_FILENO, buf, sizeof(buf));
 	if (nread == -1)
 	{
 	    fprintf(stderr, "%s\n", strerror(errno));
@@ -22,6 +22,6 @@ int main()
 	{
 	    fprintf(stderr, "%s\n", "Unexpected EOF");
 	}
-    } while (nread == 4096);
+    } while (nread == sizeof(buf));
     return 0;
 }
