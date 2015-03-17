@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-ssize_t read_(int fd, void* buf, ssize_t count)
+ssize_t read_until(int fd, void* buf, ssize_t count, char delimeter)
 {
     ssize_t add = 0;
     if (count == 0)
@@ -21,7 +21,7 @@ ssize_t read_(int fd, void* buf, ssize_t count)
 	int i;
 	for (i = 0; i < nread; i++)
 	{
-	    if (((char*) buf)[add + i] == (char) -1)
+	    if (((char*) buf)[add + i] == delimeter)
 	    {
 		found = 1;
 		break;
@@ -32,6 +32,11 @@ ssize_t read_(int fd, void* buf, ssize_t count)
     } while (!found && count > 0 && nread > 0);
     return add;
 }
+
+ssize_t read_(int fd, void* buf, ssize_t count)
+{
+	return read_until(fd, buf, count, (char) -1);
+}	
 
 ssize_t write_(int fd, const void* buf, ssize_t count)
 {
