@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <string.h>
 
-char word[4100];
+char word[4096];
 ssize_t word_length = 0;
 
 void reverse()
