@@ -1,6 +1,8 @@
 #include <helpers.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 ssize_t read_until(int fd, void* buf, ssize_t count, char delimeter)
 {
@@ -58,3 +60,27 @@ ssize_t write_(int fd, const void* buf, ssize_t count)
     } while (count > 0 && nwrite > 0);
     return add;
 }
+
+int spawn(const char* file, char* const argv[])
+{
+	pid_t pid;
+	pid = fork();
+	if (pid != 0)
+	{
+		int status;
+		waitpid(pid, &status, 0);
+		if (WIFEXITED(status) != 0)
+		{
+			return WEXITSTATUS(status);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else
+	{
+		execvp(file, argv);
+		return -1;
+	}
+}							
