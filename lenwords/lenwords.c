@@ -22,9 +22,10 @@ int main()
 		int i;
 		for (i = 0; i < nread; i++)
 		{
-			if (buf[i] == ' ' && buf[i - 1] == ' ')
+			if (i > 0 && buf[i] == ' ' && buf[i - 1] == ' ')
 			{
-				fprintf(stdout, "%d\n", 0);
+				sprintf(word, "%d\n", 0);
+				write_(STDOUT_FILENO, word, word_length + 1);
 			}	
 			else if (buf[i] != ' ')
 			{
@@ -34,7 +35,8 @@ int main()
 			{
 				if (word_length > 0)
 				{
-					fprintf(stdout, "%d\n", (int) word_length);
+					sprintf(word, "%d\n", (int) word_length);
+					write_(STDOUT_FILENO, word, word_length + 1);
 				}
 				word_length = 0;
 			}
@@ -42,7 +44,8 @@ int main()
 	} while (nread > 0);
 	if (word_length > 0)
 	{
-		fprintf(stdout, "%d\n", (int) word_length);
+		sprintf(word, "%d\n", (int) word_length);
+		write_(STDOUT_FILENO, word, word_length + 1); 
 	}
 	return 0;
 }								
