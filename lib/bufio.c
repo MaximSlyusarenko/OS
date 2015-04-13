@@ -101,4 +101,90 @@ ssize_t buf_flush(fd_t fd, struct buf_t* buf, size_t required)
 		memcpy(buf -> data, buf -> data + all, buf -> size);
 	}
 	return all;
-}				
+}
+
+ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
+{
+	ssize_t symbols_get = 0;
+	int i = 0;
+	for (i = 0; i < buf -> size; i++)
+	{
+		char tmp = ((char*) buf -> data)[i];
+		if (tmp == '\n')
+		{
+			memmove(dest, buf -> data, i);
+			memmove(buf -> data, buf -> data + i + 1, buf -> size - i - 1);
+			buf -> size -= i + 1;
+			return i + 1;
+		}
+		symbols_get++;
+	}
+	if (buf -> size != 0)
+	{
+		memmove(dest, buf -> data, symbols_get);
+		memmove(buf -> data, buf -> data + symbols_get, buf -> size - symbols_get);
+		buf -> size = 0;
+		dest = dest + symbols_get;
+	}	
+	ssize_t all = 0;
+	while (1)
+	{
+		ssize_t nread = buf_fill(fd, buf, 1);
+		if (nread == 0)
+		{
+			break;
+		}	
+		int j = 0;	
+		for (j = 0; j < nread; j++)	
+		{
+			char tmp = ((char*) buf -> data)[j];
+			if (tmp == '\n')
+			{
+				memmove(dest, buf -> data, j);
+				memmove(buf -> data, buf -> data + j + 1, buf -> size - j - 1);
+				buf -> size -= j + 1;
+				return symbols_get + 1;
+			}
+			symbols_get++;
+		}
+		all += nread;
+	}
+	return symbols_get;			
+}
+
+ssize_t buf_write(fd_t fd, struct buf_t* buf, char* src, size_t len)
+{
+	while (1)
+	{
+		ssize_t empty = buf -> capacity - buf -> size;
+		if (empty > len)
+		{
+			empty = len;
+		}	
+		memmove(buf -> data, src, empty);
+		buf -> size += empty;
+		ssize_t all = 0;
+		ssize_t start_size = buf -> size;
+		while (1)
+		{
+			ssize_t nwrite = write(fd, buf -> data + all, buf -> size);
+			if (nwrite < 0)
+			{
+				return -1;
+			}	
+			all += nwrite;
+			if (all == start_size)
+			{
+				break;
+			}
+			buf -> size -= nwrite;	
+		}
+		memcpy(buf -> data, buf -> data + all, buf -> size);
+		buf -> size = 0;
+		len -= empty;
+		if (len <= 0)
+		{	
+			return 0;
+		}
+	}					
+}						
