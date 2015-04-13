@@ -37,6 +37,13 @@ int main(int argc, char** argv)
     	{
         	current_argument[current_position - 1] = '\0';
         	int res = spawn(arguments[0], arguments);
+			if (res < 0)
+			{
+				fprintf(stderr, "spawn error");
+				buf_free(buf);
+				buf_free(output_buf);
+				return 1;
+			}	
         	if (res == 0)
         	{
             	current_argument[current_position] = '\n';
