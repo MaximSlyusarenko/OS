@@ -103,11 +103,10 @@ ssize_t buf_flush(fd_t fd, struct buf_t* buf, size_t required)
 	return all;
 }
 
-ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
+ssize_t smth(ssize_t size, struct buf_t* buf, char* dest)
 {
-	ssize_t symbols_get = 0;
 	int i = 0;
-	for (i = 0; i < buf -> size; i++)
+	for (i = 0; i < size; i++)
 	{
 		char tmp = ((char*) buf -> data)[i];
 		if (tmp == '\n')
@@ -117,12 +116,23 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 			buf -> size -= i + 1;
 			return i + 1;
 		}
-		symbols_get++;
 	}
+	return 0;
+}		
+
+ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
+{
+	ssize_t symbols_get = 0;
+	ssize_t res = smth(buf -> size, buf, dest);
+	if (res != 0)
+	{
+		return res;
+	}	
+	symbols_get = buf -> size;
 	if (buf -> size != 0)
 	{
 		memmove(dest, buf -> data, symbols_get);
-		memmove(buf -> data, buf -> data + symbols_get, buf -> size - symbols_get);
+		memmove(buf -> data, buf -> data + symbols_get + 1, buf -> size - symbols_get - 1);
 		buf -> size = 0;
 		dest = dest + symbols_get;
 	}	
@@ -134,19 +144,12 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 		{
 			break;
 		}	
-		int j = 0;	
-		for (j = 0; j < nread; j++)	
+		res = smth(nread, buf, dest);
+		if (res != 0)
 		{
-			char tmp = ((char*) buf -> data)[j];
-			if (tmp == '\n')
-			{
-				memmove(dest, buf -> data, j);
-				memmove(buf -> data, buf -> data + j + 1, buf -> size - j - 1);
-				buf -> size -= j + 1;
-				return symbols_get + 1;
-			}
-			symbols_get++;
-		}
+			return res;
+		}	
+		symbols_get += nread;
 		all += nread;
 	}
 	return symbols_get;			
@@ -164,21 +167,11 @@ ssize_t buf_write(fd_t fd, struct buf_t* buf, char* src, size_t len)
 		memmove(buf -> data, src, empty);
 		buf -> size += empty;
 		ssize_t all = 0;
-		ssize_t start_size = buf -> size;
-		while (1)
+		ssize_t nwrite = buf_flush(fd, buf, buf -> size);
+		if (nwrite < 0)
 		{
-			ssize_t nwrite = write(fd, buf -> data + all, buf -> size);
-			if (nwrite < 0)
-			{
-				return -1;
-			}	
-			all += nwrite;
-			if (all == start_size)
-			{
-				break;
-			}
-			buf -> size -= nwrite;	
-		}
+			return -1;
+		}	
 		memcpy(buf -> data, buf -> data + all, buf -> size);
 		buf -> size = 0;
 		len -= empty;
