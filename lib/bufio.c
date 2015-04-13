@@ -117,6 +117,13 @@ ssize_t smth(ssize_t size, struct buf_t* buf, char* dest)
 			return i + 1;
 		}
 	}
+	if (buf -> size != 0)
+	{
+		memmove(dest, buf -> data, size);
+		memmove(buf -> data , buf -> data + size + 1, buf -> size - size - 1);
+		buf -> size = 0;
+		dest = dest + size;
+	}	
 	return 0;
 }		
 
@@ -128,14 +135,7 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 	{
 		return res;
 	}	
-	symbols_get = buf -> size;
-	if (buf -> size != 0)
-	{
-		memmove(dest, buf -> data, symbols_get);
-		memmove(buf -> data, buf -> data + symbols_get + 1, buf -> size - symbols_get - 1);
-		buf -> size = 0;
-		dest = dest + symbols_get;
-	}	
+	symbols_get = buf -> size;	
 	ssize_t all = 0;
 	while (1)
 	{
