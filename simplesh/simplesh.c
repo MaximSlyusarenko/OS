@@ -132,6 +132,10 @@ int main()
 		int result = runpiped(programs, programsc);
 		if (result < 0)
 		{
+			return -1;
+		}
+		if (result < 0)
+		{
 			nwrite = write(STDOUT_FILENO, "\n", 1);
 			if (nwrite < 0)
 			{

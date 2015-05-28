@@ -109,6 +109,8 @@ int exec(struct execargs_t* args)
 	}
 }
 
+char return_zero = 0;
+
 void handler(int num)
 {
 	if (num == SIGINT)
@@ -117,6 +119,7 @@ void handler(int num)
 		{
 
 		}
+		return_zero = 1;
 	}
 }
 
@@ -137,13 +140,13 @@ int runpiped(struct execargs_t** programs, size_t n)
 			{
 				free(pipefd);
 				free(child);
-				return -1;
+				return (return_zero ? 0 : -1);
 			}
 			if (close(pipefd[read][0]) < 0)
 			{
 				free(pipefd);
 				free(child);
-				return -1;
+				return (return_zero ? 0 : -1);
 			}
 		}
 		if (i < n - 1)
@@ -152,19 +155,19 @@ int runpiped(struct execargs_t** programs, size_t n)
 			{
 				free(pipefd);
 				free(child);
-				return -1;
+				return (return_zero ? 0 : -1);			
 			}
 			if (dup2(pipefd[write][1], STDOUT_FILENO) < 0)
 			{
 				free(pipefd);
 				free(child);
-				return -1;
+				return (return_zero ? 0 : -1);
 			}
 			if (close(pipefd[write][1]) < 0)
 			{
 				free(pipefd);
 				free(child);
-				return -1;
+				return (return_zero ? 0 : -1);
 			}
 		}
 		else
@@ -173,7 +176,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 			{
 				free(pipefd);
 				free(child);
-				return -1;
+				return (return_zero ? 0 : -1);
 			}
 		}
 		child[i] = exec(programs[i]);
@@ -181,7 +184,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 		{
 			free(pipefd);
 			free(child);
-			return -1;
+			return (return_zero ? 0 : -1);
 		}
 		read++;
 		write++;
@@ -190,7 +193,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 	{
 		free(pipefd);
 		free(child);
-		return -1;
+		return (return_zero ? 0 : -1);
 	}
 	for (size_t count = 0; count < n; count++)
 	{
@@ -199,7 +202,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 		{
 			free(pipefd);
 			free(child);
-			return -1;
+			return (return_zero ? 0 : -1);
 		}
 		if (count == 0)
 		{
