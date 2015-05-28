@@ -134,14 +134,6 @@ int main()
 		{
 			return -1;
 		}
-		if (result < 0)
-		{
-			nwrite = write(STDOUT_FILENO, "\n", 1);
-			if (nwrite < 0)
-			{
-				return -1;
-			}
-		}
 	}
 	buf_free(buf);
 	return 0;
