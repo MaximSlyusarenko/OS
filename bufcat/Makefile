@@ -14,4 +14,4 @@ bufcat: bufcat.o ../lib/libbufio.so
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 bufcat.o: bufcat.c
-	gcc -o $@ -c -Wall -I../lib $<
+	gcc -std=c99 -o $@ -c -Wall -I../lib $<

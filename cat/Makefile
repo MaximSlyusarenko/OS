@@ -13,4 +13,4 @@ cat: cat.o ../lib/libhelpers.so
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 cat.o: cat.c
-	gcc -o $@ -c -Wall -I../lib $<
+	gcc -std=c99 -o $@ -c -Wall -I../lib $<

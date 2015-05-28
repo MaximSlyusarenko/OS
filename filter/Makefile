@@ -13,4 +13,4 @@ filter: filter.o ../lib/libhelpers.so
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 filter.o: filter.c
-	gcc -o $@ -c -Wall -I../lib $<
+	gcc -std=c99 -o $@ -c -Wall -I../lib $<

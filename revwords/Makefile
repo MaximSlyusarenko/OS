@@ -13,4 +13,4 @@ revwords: revwords.o ../lib/libhelpers.so
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 revwords.o: revwords.c
-	gcc -o $@ -c -Wall -I../lib $<
+	gcc -std=c99 -o $@ -c -Wall -I../lib $<

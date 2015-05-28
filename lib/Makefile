@@ -7,13 +7,13 @@ clean:
 	rm -f bufio.o
 
 helpers.o: helpers.c
-	gcc -o $@ -c -Wall -fpic -I. $<
+	gcc -std=c99 -o $@ -c -Wall -fpic -I. $<
 
 libhelpers.so: helpers.o
 	gcc -o $@ -shared $<
 
 bufio.o: bufio.c
-	gcc -o $@ -c -Wall -fpic -I. $<
+	gcc -std=c99 -o $@ -c -Wall -fpic -I. $<
 	
 libbufio.so: bufio.o
 	gcc -o $@ -shared $<		
