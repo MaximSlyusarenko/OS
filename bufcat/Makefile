@@ -8,7 +8,7 @@ clean:
 	$(MAKE) -C ../lib clean
 
 bufcat: bufcat.o ../lib/libbufio.so
-	gcc -o $@ -L../lib bufcat.o -Wl,-rpath=../lib -lbufio
+	gcc -o $@ bufcat.o -Wl,-rpath=../lib -L../lib -lbufio
 
 ../lib/libbufio.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)
