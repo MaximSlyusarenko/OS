@@ -1,16 +1,12 @@
 all: cat
 
 clean:
-	rm -f cat.o
 	rm -f cat
 	rm -f cat2.c
 	$(MAKE) -C ../lib clean
 
-cat: cat.o ../lib/libhelpers.so
-	gcc -o $@ cat.o -Wl,-rpath=../lib -L../lib -lhelpers
+cat: ../lib/libhelpers.so
+	gcc -o $@ cat.c -I../lib -Wl,-rpath=../lib -L../lib -lhelpers
 
 ../lib/libhelpers.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)
-
-cat.o: cat.c
-	gcc -std=c99 -o $@ -c -Wall -I../lib $<
