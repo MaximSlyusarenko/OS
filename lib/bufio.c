@@ -123,6 +123,7 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 				memmove(buf -> data, buf -> data + i + 1, buf -> size - i - 1);
 				buf -> size -= i + 1;
 				res = i + 1 + all - nread;
+				dest[res - 1] = 0;
 				return res;
 			}
 		}	
@@ -142,5 +143,6 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 		}	
 		all += nread;
 	}
+	dest[symbols_get - 1] = 0;
 	return symbols_get;			
 }

@@ -57,7 +57,7 @@ void parse_line(char* line, ssize_t line_size)
 			argc = 0;
 			size = 0;
 		}
-		else if (line[i] == ' ' || line[i] == '\n' || line[i] == 0)
+		else if (line[i] == ' ' || line[i] == 0)
 		{
 			if (!was_prog)
 			{
@@ -100,8 +100,18 @@ void parse_line(char* line, ssize_t line_size)
 	programsc++;
 }
 
+static void handler1(int num)
+{
+	if (num == SIGINT)
+	{
+		signal(SIGINT, handler1);
+		//write(STDOUT_FILENO, "aa", 2);
+	}
+}
+
 int main()
 {
+	signal(SIGINT, handler1);
 	struct buf_t* buf = buf_new(4096);
 	char* line;
 	if (buf == NULL)
@@ -119,16 +129,16 @@ int main()
 			return -1;
 		}
 		nread = buf_getline(STDIN_FILENO, buf, line);
-		if (nread < 0)
-		{
-			fprintf(stderr, "%s\n", "Can't read");
-			return -1;
-		}
-		else if (nread == 0)
+		if (nread == 0)
 		{
 			break;
 		}
 		parse_line(line, nread);
+		/*if (programsc >= 2)
+		{
+			printf("%s\n", programs[0] -> program);
+			printf("%s\n", programs[1] -> program);
+		}*/
 		int result = runpiped(programs, programsc);
 		if (result < 0)
 		{

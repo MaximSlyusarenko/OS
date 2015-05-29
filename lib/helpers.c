@@ -89,6 +89,19 @@ int spawn(const char* file, char* const argv[])
 	}
 }	
 
+void handler2(int num)
+{
+	if (num == SIGINT)
+	{
+		/*while (wait(NULL) != -1)
+		{
+
+		}
+		return_zero = 1;*/
+		exit(0);
+	}
+}
+
 int exec(struct execargs_t* args)
 {
 	args -> args[args -> argc] = NULL;
@@ -100,6 +113,7 @@ int exec(struct execargs_t* args)
 	}
 	else if (pid == 0)
 	{
+		//signal(SIGINT, handler2);
 		execvp(args -> program, args -> args);
 		return pid;
 	}
@@ -111,21 +125,17 @@ int exec(struct execargs_t* args)
 
 char return_zero = 0;
 
-void handler(int num)
-{
-	if (num == SIGINT)
-	{
-		while (wait(NULL) != -1)
-		{
-
-		}
-		return_zero = 1;
-	}
-}
-
 int runpiped(struct execargs_t** programs, size_t n)
 {
-	signal(SIGINT, handler);
+	signal(SIGINT, handler2);
+	/*for (int i = 0; i < n; i++)
+	{
+		printf("%s\n", programs[i] -> program);
+		for (int j = 0; j < programs[i] -> argc; j++)
+		{
+			printf("%s\n", programs[i] -> args[j]);
+		}
+	}*/
 	int (*pipefd)[2] = (int(*)[2]) malloc(sizeof(int[2]) * n - 1);
 	int* child = (int*) malloc(sizeof(int*) * n);
 	int read = -1;

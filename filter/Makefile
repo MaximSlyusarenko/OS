@@ -7,7 +7,7 @@ clean:
 	$(MAKE) -C ../lib clean
 
 filter: filter.o ../lib/libhelpers.so
-	gcc -o $@ -L../lib filter.o ../lib/libhelpers.so -lhelpers
+	gcc -o $@ -L../lib filter.o -Wl,-rpath=../lib -lhelpers
 
 ../lib/libhelpers.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)

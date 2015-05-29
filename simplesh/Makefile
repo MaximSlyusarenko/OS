@@ -6,7 +6,7 @@ clean:
 	$(MAKE) -C ../lib clean
 
 simplesh: simplesh.o ../lib/libhelpers.so ../lib/libbufio.so
-	gcc -o $@ -L../lib simplesh.o ../lib/libhelpers.so -lhelpers ../lib/libbufio.so -lbufio
+	gcc -o $@ -L../lib simplesh.o -Wl,-rpath=../lib -lhelpers -lbufio
 
 ../lib/libhelpers.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)
