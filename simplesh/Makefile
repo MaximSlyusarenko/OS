@@ -1,18 +1,14 @@
 all: simplesh
 
 clean:
-	rm -f simplesh.o
 	rm -f simplesh
 	$(MAKE) -C ../lib clean
 
-simplesh: simplesh.o ../lib/libhelpers.so ../lib/libbufio.so
-	gcc -o $@ -L../lib simplesh.o -Wl,-rpath=../lib -lhelpers -lbufio
+simplesh: ../lib/libhelpers.so ../lib/libbufio.so
+	gcc -std=c99 -o $@ simplesh.c -I../lib -Wl,-rpath=../lib -L../lib -lhelpers -lbufio
 
 ../lib/libhelpers.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-../lib/libbufio.so:	
+../lib/libbufio.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)
-
-simplesh.o: simplesh.c
-	gcc -std=c99 -o $@ -c -Wall -I../lib $<

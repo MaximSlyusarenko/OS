@@ -140,8 +140,11 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 		if (nread == 0)
 		{
 			break;
-		}	
-		all += nread;
+		}
+		else if (nread > 0)
+		{
+			all += nread;
+		}
 	}
 	dest[symbols_get - 1] = 0;
 	return symbols_get;			

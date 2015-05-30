@@ -89,6 +89,8 @@ int spawn(const char* file, char* const argv[])
 	}
 }	
 
+char return_zero = 0;
+
 void handler2(int num)
 {
 	if (num == SIGINT)
@@ -96,9 +98,22 @@ void handler2(int num)
 		/*while (wait(NULL) != -1)
 		{
 
-		}
-		return_zero = 1;*/
+		}*/
+		return_zero = 1;
 		exit(0);
+	}
+}
+
+void handler3(int num)
+{
+	if (num == SIGINT)
+	{
+		return_zero = 1;
+		ssize_t nwrite = write_(STDOUT_FILENO, "\n$", 2);
+		if (nwrite < 0)
+		{
+			exit(-1);
+		}
 	}
 }
 
@@ -113,7 +128,9 @@ int exec(struct execargs_t* args)
 	}
 	else if (pid == 0)
 	{
-		//signal(SIGINT, handler2);
+		struct sigaction sa;
+		sa.sa_handler = &handler2;
+		sigaction(SIGINT, &sa, NULL);
 		execvp(args -> program, args -> args);
 		return pid;
 	}
@@ -123,11 +140,8 @@ int exec(struct execargs_t* args)
 	}
 }
 
-char return_zero = 0;
-
 int runpiped(struct execargs_t** programs, size_t n)
 {
-	signal(SIGINT, handler2);
 	/*for (int i = 0; i < n; i++)
 	{
 		printf("%s\n", programs[i] -> program);
@@ -136,6 +150,9 @@ int runpiped(struct execargs_t** programs, size_t n)
 			printf("%s\n", programs[i] -> args[j]);
 		}
 	}*/
+	/*struct sigaction sa;
+	sa.sa_handler = &handler3;
+	sigaction(SIGINT, &sa, NULL);*/
 	int (*pipefd)[2] = (int(*)[2]) malloc(sizeof(int[2]) * n - 1);
 	int* child = (int*) malloc(sizeof(int*) * n);
 	int read = -1;
@@ -220,7 +237,10 @@ int runpiped(struct execargs_t** programs, size_t n)
 			{
 				if (tmp != child[i])
 				{
-					kill(child[i], SIGINT);
+					if (kill(child[i], SIGINT) < 0)
+					{
+						return (return_zero ? 0 : -1);
+					}
 				}
 			}
 		}
@@ -240,6 +260,7 @@ struct execargs_t* exec_new(char* prog, char** arguments, int argcount)
 	answer -> program = (char*) malloc(4096);
 	if (answer -> program == NULL)
 	{
+		free(answer);
 		return NULL;
 	}
 	int i = 0;
