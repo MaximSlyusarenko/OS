@@ -100,25 +100,17 @@ void parse_line(char* line, ssize_t line_size)
 	programsc++;
 }
 
-char need_parse = 1;
-
-static void handler1(int num)
+static void handler(int num)
 {
 	if (num == SIGINT)
 	{
-		need_parse = 0;
-		ssize_t nwrite = write_(STDOUT_FILENO, "\n$", 2);
-		if (nwrite < 0)
-		{
-			exit(-1);
-		}
 	}
 }
 
 int main()
 {
 	struct sigaction sa;
-	sa.sa_handler = &handler1;
+	sa.sa_handler = &handler;
 	sigaction(SIGINT, &sa, NULL);
 	struct buf_t* buf = buf_new(4096);
 	char* line;
@@ -131,40 +123,30 @@ int main()
 	while (1)
 	{
 		line = (char*) malloc(8192);
-		if (need_parse)
+		ssize_t nwrite = write_(STDOUT_FILENO, "$", 1);
+		if (nwrite < 0)
 		{
-			ssize_t nwrite = write_(STDOUT_FILENO, "$", 1);
-			if (nwrite < 0)
-			{
-				return -1;
-			}
+			return -1;
 		}
 		nread = buf_getline(STDIN_FILENO, buf, line);
 		if (nread < 0)
 		{
 			return -1;
 		}
-		else if (nread == 0) // if nread == 0 && not pressed ^C
+		else if (nread == 0)
 		{
 			break;
 		}
-		if (need_parse)
+		parse_line(line, nread);
+		/*if (programsc >= 2)
 		{
-			parse_line(line, nread);
-			/*if (programsc >= 2)
-			{
-				printf("%s\n", programs[0] -> program);
-				printf("%s\n", programs[1] -> program);
-			}*/
-			int result = runpiped(programs, programsc);
-			if (result < 0 && need_parse) // If program result < 0 and wasn't SIGINT in execvp which not handled in main(and handled later)
-			{
-				return -1;
-			}
-		}
-		else // After ^C
+			printf("%s\n", programs[0] -> program);
+			printf("%s\n", programs[1] -> program);
+		}*/
+		int result = runpiped(programs, programsc);
+		if (result < 0)
 		{
-			need_parse = 1;
+			return -1;
 		}
 	}
 	buf_free(buf);

@@ -95,24 +95,10 @@ void handler2(int num)
 {
 	if (num == SIGINT)
 	{
-		/*while (wait(NULL) != -1)
+		return_zero = 1;
+		while (wait(NULL) != -1)
 		{
 
-		}*/
-		return_zero = 1;
-		exit(0);
-	}
-}
-
-void handler3(int num)
-{
-	if (num == SIGINT)
-	{
-		return_zero = 1;
-		ssize_t nwrite = write_(STDOUT_FILENO, "\n$", 2);
-		if (nwrite < 0)
-		{
-			exit(-1);
 		}
 	}
 }
@@ -150,9 +136,12 @@ int runpiped(struct execargs_t** programs, size_t n)
 			printf("%s\n", programs[i] -> args[j]);
 		}
 	}*/
-	/*struct sigaction sa;
-	sa.sa_handler = &handler3;
-	sigaction(SIGINT, &sa, NULL);*/
+	struct sigaction newsa;
+	newsa.sa_handler = &handler2;
+	sigemptyset(&newsa.sa_mask);
+	newsa.sa_flags = 0;
+	struct sigaction oldsa;
+	sigaction(SIGINT, &newsa, &oldsa);
 	int (*pipefd)[2] = (int(*)[2]) malloc(sizeof(int[2]) * n - 1);
 	int* child = (int*) malloc(sizeof(int*) * n);
 	int read = -1;
@@ -231,11 +220,12 @@ int runpiped(struct execargs_t** programs, size_t n)
 			free(child);
 			return (return_zero ? 0 : -1);
 		}
-		if (count == 0)
+		if (tmp == child[count])
 		{
-			for (size_t i = 0; i < n; i++)
+			child[count] = -1;
+			for (size_t i = 0; i < count; i++)
 			{
-				if (tmp != child[i])
+				if (child[i] != -1)
 				{
 					if (kill(child[i], SIGINT) < 0)
 					{
@@ -245,6 +235,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 			}
 		}
 	}	
+	sigaction(SIGINT, &oldsa, NULL);
 	free(pipefd);
 	free(child);
 	return 0;
