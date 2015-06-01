@@ -1,4 +1,5 @@
 #define _POSIX_SOURCE
+#define _GNU_SOURCE
 #include <helpers.h>
 #include <stdio.h>
 #include <sys/wait.h>
@@ -114,11 +115,8 @@ int exec(struct execargs_t* args)
 	}
 	else if (pid == 0)
 	{
-		struct sigaction sa;
-		sa.sa_handler = &handler2;
-		sigaction(SIGINT, &sa, NULL);
 		execvp(args -> program, args -> args);
-		return pid;
+		exit(-1);
 	}
 	else
 	{
@@ -128,14 +126,6 @@ int exec(struct execargs_t* args)
 
 int runpiped(struct execargs_t** programs, size_t n)
 {
-	/*for (int i = 0; i < n; i++)
-	{
-		printf("%s\n", programs[i] -> program);
-		for (int j = 0; j < programs[i] -> argc; j++)
-		{
-			printf("%s\n", programs[i] -> args[j]);
-		}
-	}*/
 	struct sigaction newsa;
 	newsa.sa_handler = &handler2;
 	sigemptyset(&newsa.sa_mask);
@@ -167,7 +157,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 		}
 		if (i < n - 1)
 		{
-			if (pipe(pipefd[write]) < 0)
+			if (pipe2(pipefd[write], O_CLOEXEC) < 0)
 			{
 				free(pipefd);
 				free(child);
@@ -227,7 +217,7 @@ int runpiped(struct execargs_t** programs, size_t n)
 			{
 				if (child[i] != -1)
 				{
-					if (kill(child[i], SIGINT) < 0)
+					if (kill(child[i], SIGKILL) < 0)
 					{
 						return (return_zero ? 0 : -1);
 					}
@@ -265,13 +255,25 @@ struct execargs_t* exec_new(char* prog, char** arguments, int argcount)
 		i++;
 	}
 	answer -> args = (char**) malloc(sizeof(char*) * (argcount + 1));
+	if (answer -> args == NULL)
+	{
+		free(answer -> program);
+		free(answer);
+		return NULL;
+	}
 	for (int j = 0; j < argcount + 1; j++)
 	{
 		answer -> args[j] = (char*) malloc(4096);
-	}
-	if (answer -> args == NULL)
-	{
-		return NULL;
+		if (answer -> args[j] == NULL)
+		{
+			for (int k = 0; k < j; k++)
+			{
+				free(answer -> args[k]);
+			}
+			free(answer -> args);
+			free(answer -> program);
+			free(answer);
+		}
 	}
 	for (int j = 0; j < argcount; j++)
 	{

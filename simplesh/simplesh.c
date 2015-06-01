@@ -35,20 +35,23 @@ void parse_line(char* line, ssize_t line_size)
 	{
 		if (line[i] == '|')
 		{
+			if (line[i - 1] != ' ')
+			{
+				if (!was_prog) // not space before '|'
+				{
+					program[size] = 0;
+					args[argc][size] = 0;
+					argc++;
+				}
+				else
+				{
+					args[argc][size] = 0;
+					argc++;
+				}
+			}
 			struct execargs_t* exec = exec_new(program, args, argc);
 			programs[programsc] = exec;
 			programsc++;
-			if (!was_prog) // not space before '|'
-			{
-				program[size] = 0;
-				args[argc][size] = 0;
-				argc++;
-			}
-			else
-			{
-				args[argc][size] = 0;
-				argc++;
-			}
 			while (line[i + 1] == ' ')
 			{
 				i++;
@@ -138,11 +141,6 @@ int main()
 			break;
 		}
 		parse_line(line, nread);
-		/*if (programsc >= 2)
-		{
-			printf("%s\n", programs[0] -> program);
-			printf("%s\n", programs[1] -> program);
-		}*/
 		int result = runpiped(programs, programsc);
 		if (result < 0)
 		{
