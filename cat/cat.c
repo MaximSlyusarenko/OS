@@ -9,19 +9,25 @@ int main()
     char buf[4096];
     ssize_t nread = 0;
     ssize_t nwrite = 0;
-
-    do
+    while (1)
     {
-	nread = read_(STDIN_FILENO, buf, sizeof(buf));
-	if (nread == -1)
-	{
-	    fprintf(stderr, "%s\n", strerror(errno));
-	}
-	nwrite = write_(STDOUT_FILENO, buf, nread);
-	if (nwrite < nread)
-	{
-	    fprintf(stderr, "%s\n", "Unexpected EOF");
-	}
-    } while (nread == sizeof(buf));
+    	nread = read_(STDIN_FILENO, buf, sizeof(buf));
+    	if (nread == 0)
+    	{
+    		break;
+    	}
+    	else if (nread < 0)
+    	{
+    		fprintf(stderr, "%s\n", "Can't write");
+    		return -1;
+    	}
+    	nwrite = write_(STDOUT_FILENO, buf, nread);
+    	if (nwrite < 0)
+    	{
+    		fprintf(stderr, "%s\n", "Can't write");
+    		return -1;
+    	}
+    }
+
     return 0;
 }

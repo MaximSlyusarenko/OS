@@ -6,7 +6,7 @@ clean:
 	$(MAKE) -C ../lib clean
 
 revwords: ../lib/libhelpers.so
-	gcc -o $@ revwords.c -I../lib -Wl,-rpath=../lib -L../lib -lhelpers
+	gcc -std=c99 -o $@ revwords.c -I../lib -Wl,-rpath=../lib -L../lib -lhelpers
 
 ../lib/libhelpers.so:
 	$(MAKE) -C $(dir $@) $(notdir $@)
