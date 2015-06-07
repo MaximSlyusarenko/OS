@@ -63,7 +63,7 @@ int port_listen(char* port)
 
 int get_client(int fd)
 {
-	struct sockaddr_storage client;
+	struct sockaddr_in client;
 	socklen_t len = sizeof(client);
 	int acceptfd;
 	while(1)
@@ -73,6 +73,7 @@ int get_client(int fd)
 		{
 			if (errno != EAGAIN && errno != EINTR)
 			{
+				close(fd);
 				return -1;
 			}
 			errno = 0;
@@ -83,42 +84,66 @@ int get_client(int fd)
 	return acceptfd;
 }
 
+int listen1;
+int listen2;
+
 int work(int fd1, int fd2)
 {
-	struct buf_t* buf = buf_new(4096);
-	if (buf == NULL)
+	pid_t pid = fork();
+	if (pid < 0)
 	{
 		close(fd1);
 		close(fd2);
 		return -1;
 	}
-	while (1)
+	else if (pid == 0)
 	{
-		ssize_t nread = buf_fill(fd1, buf, buf -> capacity);
-		if (nread == -1)
+		struct buf_t* buf = buf_new(4096);
+		if (buf == NULL)
 		{
+			close(listen1);
+			close(listen2);
 			close(fd1);
 			close(fd2);
 			return -1;
 		}
-		else if (nread == 0)
+		while (1)
 		{
-			break;
-		}
-		else
-		{
-			ssize_t nwrite = buf_flush(fd2, buf, buf -> size);
-			if (nwrite == -1)
+			ssize_t nread = buf_fill(fd1, buf, 1);
+			if (nread == -1)
 			{
+				buf_free(buf);
+				close(listen1);
+				close(listen2);
 				close(fd1);
 				close(fd2);
 				return -1;
 			}
+			else if (nread == 0) // If ^D then close connection
+			{
+				buf_free(buf);
+				close(listen1);
+				close(listen2);
+				close(fd1);
+				close(fd2);
+				exit(0);
+			}
+			else
+			{
+				ssize_t nwrite = buf_flush(fd2, buf, buf -> size);
+				if (nwrite == -1)
+				{
+					buf_free(buf);
+					close(listen1);
+					close(listen2);
+					close(fd1);
+					close(fd2);
+					return -1;
+				}
+			}
 		}
 	}
-	close(fd1);
-	close(fd2);
-	return 0;
+	return pid;
 }
 
 void handler(int num)
@@ -144,44 +169,48 @@ int main(int argc, char* argv[])
 	sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGCHLD, &sa, NULL);
-	int listen1 = port_listen(port);
+	listen1 = port_listen(port);
 	if (listen1 < 0)
 	{
 		return -1;
 	}
-	int listen2 = port_listen(port2);
+	listen2 = port_listen(port2);
 	if (listen2 < 0)
 	{
+		close(listen1);
 		return -1;
 	}
 	while (1)
 	{
 		int acceptfd1 = get_client(listen1);
+		if (acceptfd1 < 0)
+		{
+			close(listen1);
+			close(listen2);
+			return -1;
+		}
 		int acceptfd2 = get_client(listen2);
-		pid_t pid1 = fork();
-		if (pid1 < 0)
+		if (acceptfd2 < 0)
 		{
+			close(listen1);
+			close(listen2);
 			close(acceptfd1);
-			close(acceptfd2);
 			return -1;
 		}
-		else if (pid1 == 0)
+		pid_t work1 = work(acceptfd1, acceptfd2);
+		if (work1 < 0)
 		{
-			exit(work(acceptfd1, acceptfd2));
+			exit(0);
 		}
-		pid_t pid2 = fork();
-		if (pid2 < 0)
+		pid_t work2 = work(acceptfd2, acceptfd1);
+		if (work2 < 0)
 		{
-			kill(pid1, SIGKILL);
-			close(acceptfd1);
-			close(acceptfd2);
-			return -1;
-		}
-		else if (pid2 == 0)
-		{
-			exit(work(acceptfd2, acceptfd1));
+			kill(work1, SIGKILL);
+			exit(0);
 		}
 		close(acceptfd1);
 		close(acceptfd2);
 	}
+	close(listen1);
+	close(listen2);
 }
