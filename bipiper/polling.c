@@ -89,42 +89,66 @@ int get_client(int fd)
 	return acceptfd;
 }
 
+int listen1;
+int listen2;
+
 int work(int fd1, int fd2)
 {
-	struct buf_t* buf = buf_new(4096);
-	if (buf == NULL)
+	pid_t pid = fork();
+	if (pid < 0)
 	{
 		close(fd1);
 		close(fd2);
 		return -1;
 	}
-	while (1)
+	else if (pid == 0)
 	{
-		ssize_t nread = buf_fill(fd1, buf, buf -> capacity);
-		if (nread == -1)
+		struct buf_t* buf = buf_new(4096);
+		if (buf == NULL)
 		{
+			close(listen1);
+			close(listen2);
 			close(fd1);
 			close(fd2);
 			return -1;
 		}
-		else if (nread == 0)
+		while (1)
 		{
-			break;
-		}
-		else
-		{
-			ssize_t nwrite = buf_flush(fd2, buf, buf -> size);
-			if (nwrite == -1)
+			ssize_t nread = buf_fill(fd1, buf, 1);
+			if (nread == -1)
 			{
+				buf_free(buf);
+				close(listen1);
+				close(listen2);
 				close(fd1);
 				close(fd2);
 				return -1;
 			}
+			else if (nread == 0) // If ^D then close connection
+			{
+				buf_free(buf);
+				close(listen1);
+				close(listen2);
+				close(fd1);
+				close(fd2);
+				exit(0);
+			}
+			else
+			{
+				ssize_t nwrite = buf_flush(fd2, buf, buf -> size);
+				if (nwrite == -1)
+				{
+					buf_free(buf);
+					close(listen1);
+					close(listen2);
+					close(fd1);
+					close(fd2);
+					return -1;
+				}
+			}
 		}
 	}
-	close(fd1);
-	close(fd2);
-	return 0;
+	return pid;
 }
 
 void handler(int num)
@@ -140,52 +164,18 @@ struct pollfd fds[256];
 struct buf_pair buffers[127];
 int fd_next;
 
-void close_clients(int i)
+void close_pipe(int firstfd_num, int secondfd_num, int buf_num)
 {
-	close(fds[2 * i].fd);
-	close(fds[2 * i + 1].fd);
-	fds[2 * i].fd = -1;
-	fds[2 * i + 1].fd = -1;
-	if (fds[2 * i].revents & POLLIN)
-	{
-		struct buf_t* tmp = buffers[i].buf[0];
-		int size = buf_size(tmp);
-		ssize_t nread = buf_fill(fds[2 * i].fd, tmp, buf_size(tmp) + 1);
-		if (nread <= size)
-		{
-			close_clients(i);
-		}
-		if (buf_size(tmp) == buf_capacity(tmp))
-		{
-			fds[2 * i].revents ^= POLLIN;
-		}
-		if (buf_size(tmp) > 0)
-		{
-			fds[2 * i + 1].revents |= POLLOUT;
-		}
-	}
-	if (fds[2 * i].revents & POLLOUT)
-	{
-		struct buf_t* tmp = buffers[i].buf[1];
-		ssize_t nwrite = buf_flush(fds[2 * i].fd, tmp, buf_size(tmp));
-		if (nwrite < 0)
-		{
-			close_clients(i);
-		}
-		if (buf_size(tmp) == 0)
-		{
-			fds[i].revents ^= POLLOUT;
-		}
-	}
-	for (int i = 1; i < fd_next; i++)
-	{
-		if (fds[2 * i].fd < 0)
-		{
-			fds[2 * i] = fds[2 * fd_next];
-			fds[2 * i + 1] = fds[2 * (fd_next - 1)];
-			fd_next--;
-		}
-	}
+	close(fds[firstfd_num].fd);
+	close(fds[secondfd_num].fd);
+	fds[firstfd_num] = fds[fd_next - 2 + (firstfd_num) % 2];
+	fds[secondfd_num] = fds[fd_next - 2 + (secondfd_num) % 2];
+	fd_next -= 2;
+	buf_free(buffers[buf_num].buf[0]);
+	buf_free(buffers[buf_num].buf[1]);
+	int buf_num2 = (fd_next - 2) / 2;
+	buffers[buf_num].buf[0] = buffers[buf_num2].buf[0];
+	buffers[buf_num].buf[1] = buffers[buf_num2].buf[1];
 }
 
 int main(int argc, char* argv[])
@@ -202,7 +192,7 @@ int main(int argc, char* argv[])
 	sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction(SIGCHLD, &sa, NULL);
-	int listen1 = port_listen(port);
+	listen1 = port_listen(port);
 	if (listen1 < 0)
 	{
 		return -1;
@@ -212,11 +202,13 @@ int main(int argc, char* argv[])
 	int r = fcntl(fds[0].fd, F_SETFL, fcntl(fds[0].fd, F_GETFL, 0) | O_NONBLOCK);
 	if (r < 0)
 	{
+		close(fds[0].fd);
 		return -1;
 	}
-	int listen2 = port_listen(port2);
+	listen2 = port_listen(port2);
 	if (listen2 < 0)
 	{
+		close(fds[0].fd);
 		return -1;
 	}
 	fds[1].fd = listen2;
@@ -224,9 +216,11 @@ int main(int argc, char* argv[])
 	r = fcntl(fds[1].fd, F_SETFL, fcntl(fds[1].fd, F_GETFL, 0) | O_NONBLOCK);
 	if (r < 0)
 	{
+		close(fds[0].fd);
+		close(fds[1].fd);
 		return -1;
 	}
-	fd_next = 1;
+	fd_next = 2;
 	int state = 0;
 	int clientfd = -1;
 	while (1)
@@ -234,36 +228,105 @@ int main(int argc, char* argv[])
 		int num = poll(fds, fd_next, 5000);
 		if (num < 0)
 		{
-			break;
+			if (errno != EINTR)
+			{
+				break;
+			}
+			else
+			{
+				continue;
+			}
 		}
 		else if (num == 0)
 		{
 			continue;
 		}
-		if (fds[state].revents & POLLIN)
+		for (int i = 0; i < fd_next; i++)
 		{
-			int cfd = get_client(fds[state].fd);
-			if (state == 0)
+			if (fds[i].revents != 0)
 			{
-				clientfd = cfd;
-			}
-			else
-			{
-				buffers[fd_next].buf[0] = buf_new(4096);
-				buffers[fd_next].buf[1] = buf_new(4096);
-				fds[2 * fd_next].fd = clientfd;
-				fds[2 * fd_next].events = POLLIN | POLLHUP;
-				fds[2 * fd_next + 1].fd = cfd;
-				fds[2 * fd_next + 1].events = POLLIN | POLLHUP;
-				fd_next++;
-			}
-			state ^= 1;
-		}
-		for (int i = 1; i < fd_next; i++)
-		{
-			if ((fds[2 * i].revents & POLLHUP) || (fds[2 * i].revents & POLLERR))
-			{
-				close_clients(i);
+				if (i == state && fd_next < 256) // Can add
+				{
+					clientfd = get_client(fds[state].fd);
+					fds[fd_next + state].fd = clientfd;
+					fds[fd_next + state].events = POLLIN;
+					fds[state].events = 0;
+					fds[!state].events = POLLIN;
+					if (state == 1)
+					{
+						buffers[(fd_next - 2) / 2].buf[0] = buf_new(4096);
+						buffers[(fd_next - 2) / 2].buf[1] = buf_new(4096);
+						fd_next += 2;
+					}
+					state ^= 1;
+				}
+				else if (i > 1)
+				{
+					int buf_num = (i - (i % 2) - 2) / 2;
+					int secondfd_num;
+					if (i % 2 != 0)
+					{
+						secondfd_num = i + 1;
+					}
+					else
+					{
+						secondfd_num = i - 1;
+					}
+					if (fds[i].revents & POLLIN)
+					{
+						int id;
+						if (i % 2 != 0)
+						{
+							id = 1;
+						}
+						else
+						{
+							id = 0;
+						}
+						int start_size = buf_size(buffers[buf_num].buf[id]);
+						int nread = buf_fill(fds[i].fd, buffers[buf_num].buf[id], start_size + 1);
+						if (nread < start_size + 1)
+						{
+							close_pipe(i, secondfd_num, buf_num);
+						}
+						else
+						{
+							if (buf_size(buffers[buf_num].buf[id]) == buf_capacity(buffers[buf_num].buf[id]))
+							{
+								fds[i].events ^= POLLIN;
+							}
+							fds[secondfd_num].events |= POLLOUT;
+						}
+					}
+					else if (fds[i].revents & POLLOUT)
+					{
+						int id;
+						if (i % 2 != 0)
+						{
+							id = 1;
+						}
+						else
+						{
+							id = 0;
+						}
+						int nwrite = buf_flush(fds[i].fd, buffers[buf_num].buf[id], 1);
+						if (nwrite < 0)
+						{
+							close_pipe(i, secondfd_num, buf_num);
+						}
+						else
+						{
+							if (buf_size(buffers[buf_num].buf[id]) == 0)
+							{
+								fds[i].events ^= POLLOUT;
+							}
+							if (buf_size(buffers[buf_num].buf[id]) < buf_capacity(buffers[buf_num].buf[id]))
+							{
+								fds[secondfd_num].events |= POLLIN;
+							}
+						}
+					}
+				}
 			}
 		}
 	}
