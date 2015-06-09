@@ -1,6 +1,6 @@
 #define _XOPEN_SOURCE 600
 
-#include <bufio.h>
+#include "../lib/bufio.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,7 +49,13 @@ int main(int argc, char* argv[])
 		{
 			continue;
 		}
-		else if (bind(sockfd, iterator -> ai_addr, iterator -> ai_addrlen) < 0)
+		int one = 1;
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int)) < 0)
+		{
+			close(sockfd);
+			continue;
+		}
+		if (bind(sockfd, iterator -> ai_addr, iterator -> ai_addrlen) < 0)
 		{
 			close(sockfd);
 			continue;

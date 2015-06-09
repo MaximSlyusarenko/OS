@@ -26,8 +26,8 @@ ssize_t read_until(int fd, void* buf, ssize_t count, char delimeter)
 		{
 	    	if (((char*) buf)[add + i] == delimeter)
 	    	{
-			found = 1;
-			break;
+				found = 1;
+				break;
 	    	}
 		}
 		add += nread;
