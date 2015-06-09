@@ -114,6 +114,8 @@ int fd_next;
 
 void close_pipe(int firstfd_num, int secondfd_num, int buf_num)
 {
+	fprintf(stderr, "Client %d disconnected\n", fds[firstfd_num].fd);
+	fprintf(stderr, "Client %d disconnected\n", fds[secondfd_num].fd);
 	close(fds[firstfd_num].fd);
 	close(fds[secondfd_num].fd);
 	fds[firstfd_num] = fds[fd_next - 2 + (firstfd_num) % 2];
@@ -126,8 +128,6 @@ void close_pipe(int firstfd_num, int secondfd_num, int buf_num)
 	buffers[buf_num].buf[1] = buffers[buf_num2].buf[1];
 	buffers[buf_num].flag[0] = buffers[buf_num2].flag[0];
 	buffers[buf_num].flag[1] = buffers[buf_num2].flag[1];
-	fprintf(stderr, "%d\n", buffers[buf_num].flag[0]);
-	fprintf(stderr, "%d\n", buffers[buf_num].flag[1]);
 }
 
 int main(int argc, char* argv[])
