@@ -20,18 +20,17 @@ void reverse()
 
 int main()
 {
-	char buf[4100];
+	char buf[4096];
+	char space[1];
+	space[0] = ' ';
 	ssize_t nread = 0;
-	ssize_t all = 0;
 	do
 	{
-		nread = read_until(STDIN_FILENO, buf, sizeof(buf), ' ');
-		//fprintf(stderr, "%s\n", buf);
-		all += nread;
-		if (nread == -1)
+		nread = read_until(STDIN_FILENO, buf, 4096, ' ');
+		if (nread < 0)
 		{
 			fprintf(stderr, "%s\n", strerror(errno));
-			exit(1);
+			return -1;
 		}
 		int i;
 		for (i = 0; i < nread; i++)
@@ -43,24 +42,22 @@ int main()
 			}
 			else
 			{
+				ssize_t nwrite;
 				if (word_length > 0)
 				{
 					reverse();
-					ssize_t nwrite = write_(STDOUT_FILENO, word, word_length);
+					nwrite = write_(STDOUT_FILENO, word, word_length);
 					if (nwrite < 0)
 					{
 						fprintf(stderr, "Can't write\n");
 						return -1;
 					}
-					char c[1];
-					c[0] = ' ';
-					nwrite = write_(STDOUT_FILENO, c, 1);
-					if (nwrite < 0)
-					{
-						fprintf(stderr, "Can't write\n");
-						return -1;
-					}
-					all -= word_length + 1;
+				}
+				nwrite = write_(STDOUT_FILENO, space, 1);
+				if (nwrite < 0)
+				{
+					fprintf(stderr, "Can't write\n");
+					return -1;
 				}
 				word_length = 0;
 			}
@@ -70,16 +67,11 @@ int main()
 	if (word_length > 0)
 	{
 		reverse();
-		while (all > 0)
+		ssize_t nwrite = write_(STDOUT_FILENO, word, word_length);
+		if (nwrite < 0)
 		{
-			ssize_t nwrite = write_(STDOUT_FILENO, word, word_length);
-			if (nwrite < 0)
-			{
-				fprintf(stderr, "Can't write\n");
-				return -1;
-			}
-			all -= nwrite;
-			word_length -= nwrite;
+			fprintf(stderr, "Can't write\n");
+			return -1;
 		}
 	}
 	return 0;

@@ -17,7 +17,7 @@ ssize_t read_until(int fd, void* buf, ssize_t count, char delimeter)
     do
     {
 		nread = read(fd, buf + add, count);
-		if (nread == -1)
+		if (nread < 0)
 		{
 	    	return -1;
 		}
