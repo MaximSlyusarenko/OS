@@ -123,11 +123,14 @@ void close_pipe(int firstfd_num, int secondfd_num, int buf_num)
 	fd_next -= 2;
 	buf_free(buffers[buf_num].buf[0]);
 	buf_free(buffers[buf_num].buf[1]);
-	int buf_num2 = fd_next / 2;
-	buffers[buf_num].buf[0] = buffers[buf_num2].buf[0];
-	buffers[buf_num].buf[1] = buffers[buf_num2].buf[1];
-	buffers[buf_num].flag[0] = buffers[buf_num2].flag[0];
-	buffers[buf_num].flag[1] = buffers[buf_num2].flag[1];
+	int buf_num2 = (fd_next - 2) / 2;
+	if (buf_num != buf_num2)
+	{
+		buffers[buf_num].buf[0] = buffers[buf_num2].buf[0];
+		buffers[buf_num].buf[1] = buffers[buf_num2].buf[1];
+		buffers[buf_num].flag[0] = buffers[buf_num2].flag[0];
+		buffers[buf_num].flag[1] = buffers[buf_num2].flag[1];
+	}
 }
 
 int main(int argc, char* argv[])
@@ -209,6 +212,8 @@ int main(int argc, char* argv[])
 					{
 						buffers[(fd_next - 2) / 2].buf[0] = buf_new(4096);
 						buffers[(fd_next - 2) / 2].buf[1] = buf_new(4096);
+						buffers[(fd_next - 2) / 2].flag[0] = 0;
+						buffers[(fd_next - 2) / 2].flag[1] = 0;
 						fd_next += 2;
 					}
 					state ^= 1;
@@ -240,7 +245,7 @@ int main(int argc, char* argv[])
 						int nread = buf_fill(fds[i].fd, buffers[buf_num].buf[id], start_size + 1);
 						if (nread == start_size)
 						{
-							fds[i].events ^= POLLIN;
+							fds[i].events &= ~POLLIN;
 							if (buffers[buf_num].flag[id ^ 1])
 							{
 								close_pipe(i, secondfd_num, buf_num);
@@ -249,16 +254,21 @@ int main(int argc, char* argv[])
 							{
 								buffers[buf_num].flag[id] = 1;
 							}
+							fds[secondfd_num].events |= POLLOUT;
 						}
 						else if (nread < start_size)
 						{
+							if (errno == EAGAIN)
+							{
+								continue;
+							}
 							close_pipe(i, secondfd_num, buf_num);
 						}
 						else
 						{
 							if (buf_size(buffers[buf_num].buf[id]) == buf_capacity(buffers[buf_num].buf[id]))
 							{
-								fds[i].events ^= POLLIN;
+								fds[i].events &= ~POLLIN;
 							}
 							fds[secondfd_num].events |= POLLOUT;
 						}
@@ -281,10 +291,11 @@ int main(int argc, char* argv[])
 						}
 						if (buf_size(buffers[buf_num].buf[id]) == 0)
 						{
-							fds[i].events ^= POLLOUT;
+							fds[i].events &= ~POLLOUT;
 							if (buffers[buf_num].flag[id])
 							{
 								shutdown(fds[i].fd, SHUT_WR);
+								shutdown(fds[secondfd_num].fd, SHUT_RD);
 							}
 						}
 						if (buf_size(buffers[buf_num].buf[id]) < buf_capacity(buffers[buf_num].buf[id]))
