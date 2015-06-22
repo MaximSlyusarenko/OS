@@ -123,7 +123,7 @@ void close_pipe(int firstfd_num, int secondfd_num, int buf_num)
 	fd_next -= 2;
 	buf_free(buffers[buf_num].buf[0]);
 	buf_free(buffers[buf_num].buf[1]);
-	int buf_num2 = (fd_next - 2) / 2;
+	int buf_num2 = fd_next / 2;
 	buffers[buf_num].buf[0] = buffers[buf_num2].buf[0];
 	buffers[buf_num].buf[1] = buffers[buf_num2].buf[1];
 	buffers[buf_num].flag[0] = buffers[buf_num2].flag[0];
