@@ -79,6 +79,10 @@ void parse_line(char* line, ssize_t line_size)
 			{
 				i++;
 			}
+			if (line[i] == ' ' && line[i + 1] == 0)
+			{
+				break;
+			}
 		}
 		else
 		{

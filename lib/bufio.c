@@ -130,7 +130,7 @@ ssize_t buf_getline(fd_t fd, struct buf_t* buf, char* dest)
 		if (buf -> size != 0)
 		{
 			memmove(dest, buf -> data, size);
-			memmove(buf -> data , buf -> data + size + 1, buf -> size - size - 1);
+			memmove(buf -> data , buf -> data + size + 1, buf -> capacity - size - 1);
 			buf -> size = 0;
 			dest = dest + size;
 		}	
