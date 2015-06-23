@@ -71,6 +71,7 @@ int port_listen(char* port)
 	{
 		return -1;
 	}
+	errno = 0;
 	return sockfd;
 }
 
@@ -111,15 +112,20 @@ void handler(int num)
 struct pollfd fds[256];
 struct buf_pair buffers[127];
 int fd_next;
+int state = 0;
 
 void close_pipe(int firstfd_num, int secondfd_num, int buf_num)
 {
 	fprintf(stderr, "Client %d disconnected\n", fds[firstfd_num].fd);
 	fprintf(stderr, "Client %d disconnected\n", fds[secondfd_num].fd);
+	//fprintf(stderr, "First num: %d %d\n", firstfd_num, fd_next - 2 + (firstfd_num % 2));
+	//fprintf(stderr, "Second num: %d %d\n", secondfd_num, fd_next - 2 + (secondfd_num % 2));
 	close(fds[firstfd_num].fd);
 	close(fds[secondfd_num].fd);
-	fds[firstfd_num] = fds[fd_next - 2 + (firstfd_num) % 2];
-	fds[secondfd_num] = fds[fd_next - 2 + (secondfd_num) % 2];
+	fds[firstfd_num].revents = 0;
+	fds[secondfd_num].revents = 0;
+	fds[firstfd_num] = fds[fd_next + state - 2 + (firstfd_num) % 2];
+	fds[secondfd_num] = fds[fd_next + state - 2 + (secondfd_num) % 2];
 	fd_next -= 2;
 	buf_free(buffers[buf_num].buf[0]);
 	buf_free(buffers[buf_num].buf[1]);
@@ -176,7 +182,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 	fd_next = 2;
-	int state = 0;
+	state = 0;
 	int clientfd = -1;
 	while (1)
 	{
@@ -189,6 +195,7 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
+				errno = 0;
 				continue;
 			}
 		}
@@ -207,7 +214,7 @@ int main(int argc, char* argv[])
 					fds[fd_next + state].fd = clientfd;
 					fds[fd_next + state].events = POLLIN;
 					fds[state].events = 0;
-					fds[!state].events = POLLIN;
+					fds[state ^ 1].events = POLLIN;
 					if (state == 1)
 					{
 						buffers[(fd_next - 2) / 2].buf[0] = buf_new(4096);
@@ -220,6 +227,7 @@ int main(int argc, char* argv[])
 				}
 				else if (i > 1)
 				{
+					//fprintf(stderr, "I: %d\n", i);
 					int buf_num = (i - (i % 2) - 2) / 2;
 					int secondfd_num;
 					if (i % 2 == 0)
@@ -232,17 +240,11 @@ int main(int argc, char* argv[])
 					}
 					if (fds[i].revents & POLLIN)
 					{
-						int id;
-						if (i % 2 != 0)
-						{
-							id = 1;
-						}
-						else
-						{
-							id = 0;
-						}
+						//fprintf(stderr, "fd: %d\n", fds[i].fd);
+						int id = i % 2;
 						int start_size = buf_size(buffers[buf_num].buf[id]);
 						int nread = buf_fill(fds[i].fd, buffers[buf_num].buf[id], start_size + 1);
+						//fprintf(stderr, "nread: %d, start size: %d, errno: %s\n", nread, start_size, strerror(errno));
 						if (nread == start_size)
 						{
 							fds[i].events &= ~POLLIN;
@@ -258,10 +260,6 @@ int main(int argc, char* argv[])
 						}
 						else if (nread < start_size)
 						{
-							if (errno == EAGAIN)
-							{
-								continue;
-							}
 							close_pipe(i, secondfd_num, buf_num);
 						}
 						else
@@ -275,18 +273,15 @@ int main(int argc, char* argv[])
 					}
 					else if (fds[i].revents & POLLOUT)
 					{
-						int id;
-						if (i % 2 == 0)
-						{
-							id = 1;
-						}
-						else
-						{
-							id = 0;
-						}
+						int id = (i % 2) ^ 1;
 						int nwrite = buf_flush(fds[i].fd, buffers[buf_num].buf[id], 1);
 						if (nwrite < 0)
 						{
+							if (errno == EAGAIN)
+							{
+								errno = 0;
+								continue;
+							}
 							close_pipe(i, secondfd_num, buf_num);
 						}
 						if (buf_size(buffers[buf_num].buf[id]) == 0)
